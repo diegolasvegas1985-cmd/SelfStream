@@ -59,19 +59,6 @@ export async function getVixSrcStreams(
 
 
 
-        const { body, statusCode } = await request(embedUrl, {
-            headers: {
-                ...VIXSRC_HEADERS,
-                'Referer': `${siteOrigin}/`,
-                'Accept': 'text/html,application/xhtml+xml'
-            }
-        });
-
-
-        if (statusCode !== 200) {
-            console.log(`[VixSrc] Embed page failed: ${statusCode}`);
-            return [];
-        }
 
 
         const html = await body.text();
