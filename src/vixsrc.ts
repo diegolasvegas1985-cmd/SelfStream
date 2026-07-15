@@ -1,5 +1,7 @@
-import { request } from 'undici';
-import { config } from './config';
+import { request } from "undici";
+import { config } from "./config";
+import { makeProxyToken, VIXSRC_HEADERS } from "./proxy";
+
 
 export async function getVixSrcStreams(
     id: string,
@@ -12,76 +14,93 @@ export async function getVixSrcStreams(
 
         const lang = preferredLang || "it";
 
-        let apiUrl = "";
+        let pageUrl = "";
 
         if (season && episode) {
-            apiUrl =
-            `https://${config.vixsrcDomain}/api/tv/${id}/${season}/${episode}`;
+            pageUrl =
+            `https://${config.vixsrcDomain}/tv/${id}/${season}/${episode}?lang=${lang}`;
         } else {
-            apiUrl =
-            `https://${config.vixsrcDomain}/api/movie/${id}`;
+            pageUrl =
+            `https://${config.vixsrcDomain}/movie/${id}?lang=${lang}`;
         }
 
 
-        console.log("[VixSrc API TEST]:", apiUrl);
+        console.log("[VixSrc PAGE]", pageUrl);
 
 
-        const { body, statusCode } = await request(apiUrl, {
-
+        const { body, statusCode } = await request(pageUrl, {
             headers: {
-
+                ...VIXSRC_HEADERS,
                 "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36",
                 "Accept":
-                "application/json,text/plain,*/*",
-
-                "Referer":
-                "https://vixsrc.to/",
-
-                "Origin":
-                "https://vixsrc.to"
-
+                "text/html,application/xhtml+xml"
             }
-
         });
 
 
-        const text = await body.text();
+        const html = await body.text();
 
 
-        console.log("[VixSrc STATUS]:", statusCode);
-
-        console.log(
-            "[VixSrc RESPONSE]:",
-            text.substring(0,500)
-        );
+        console.log("[VixSrc STATUS]", statusCode);
 
 
         if (statusCode !== 200) {
+            console.log(html.substring(0,300));
             return [];
         }
 
 
-        // per ora restituisce il risultato grezzo di controllo
+        // Cerca il JSON src dell'embed
+        const match = html.match(
+            /"src"\s*:\s*"([^"]+)"/
+        );
+
+
+        if (!match) {
+            console.log("[VixSrc] src embed non trovato");
+            console.log(html.substring(0,500));
+            return [];
+        }
+
+
+        let embed = match[1]
+            .replace(/\\\//g,"/");
+
+
+        if (embed.startsWith("/")) {
+            embed =
+            `https://${config.vixsrcDomain}${embed}`;
+        }
+
+
+        console.log("[VixSrc EMBED]", embed);
+
+
+
+        const token = makeProxyToken(
+            embed,
+            VIXSRC_HEADERS
+        );
+
 
         return [
             {
-                name: "VixSrc API TEST",
-                title: "API OK",
-                url: `https://${config.vixsrcDomain}/movie/${id}?lang=${lang}`
+                name:"VixSrc 🇮🇹",
+                title:"VixSrc Player",
+                url:
+                `/proxy/hls/manifest.m3u8?token=${token}`
             }
         ];
 
 
-    } catch(err) {
+    } catch(e) {
 
         console.error(
             "[VixSrc ERROR]",
-            err
+            e
         );
 
         return [];
-
     }
 }
