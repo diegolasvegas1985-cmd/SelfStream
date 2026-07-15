@@ -39,17 +39,6 @@ if (statusCode !== 200) {
 }
         
 
-        const data: any = await body.json();
-        const embedPath = data?.src;
-        if (!embedPath) {
-            console.log(`[VixSrc] No 'src' field in API response`);
-            return null;
-        }
-
-        return embedPath.startsWith('http') ? embedPath : `${siteOrigin}${embedPath}`;
-    } catch (err) {
-        console.error(`[VixSrc] API error:`, err);
-        return null;
     }
 }
 
