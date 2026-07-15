@@ -139,7 +139,12 @@ async function handleStream(type: string, id: string, userConfig: UserConfig): P
                     const resp = await fetch(`https://api.themoviedb.org/3/find/${tmdbId}?api_key=${TMDB_KEY}&external_source=imdb_id&language=${titleLang}`);
                     const data = await resp.json() as any;
                     const r = data?.movie_results?.[0] || data?.tv_results?.[0];
-                    mediaTitle = r?.title || r?.name || '';
+
+if (r?.id) {
+    tmdbId = String(r.id);
+}
+
+mediaTitle = r?.title || r?.name || '';
                 } else {
                     const resp = await fetch(`https://api.themoviedb.org/3/${tmdbType}/${tmdbId}?api_key=${TMDB_KEY}&language=${titleLang}`);
                     const data = await resp.json() as any;
