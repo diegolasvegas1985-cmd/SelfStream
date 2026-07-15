@@ -5,11 +5,11 @@ export async function getVixSrcStreams(
     season?: string,
     episode?: string,
     preferredLang?: string
-): Promise<{name:string,title:string,url:string}[]> {
+): Promise<any[]> {
 
     const lang = preferredLang || "it";
 
-    let url = "";
+    let url: string;
 
     if (season && episode) {
         url = `https://${config.vixsrcDomain}/tv/${id}/${season}/${episode}?lang=${lang}`;
@@ -19,11 +19,11 @@ export async function getVixSrcStreams(
 
     console.log("[VixSrc] Direct player:", url);
 
-
-return [
- {
-  name:"VixSrc 🇮🇹",
-  title:"Apri VixSrc",
-  externalUrl: url
- }
-];
+    return [
+        {
+            name: "VixSrc 🇮🇹",
+            title: "Apri VixSrc",
+            externalUrl: url
+        }
+    ];
+}
