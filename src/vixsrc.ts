@@ -62,6 +62,7 @@ export async function getVixSrcStreams(tmdbId: string, season?: string, episode?
                 'Referer': `${siteOrigin}/`
             }
         });
+        return apiUrl;
 
         if (statusCode !== 200) {
             console.log(`[VixSrc] Embed page fetch failed: ${statusCode}`);
