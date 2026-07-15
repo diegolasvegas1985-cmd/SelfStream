@@ -20,17 +20,24 @@ async function getEmbedUrlFromApi(tmdbId: string, season?: string, episode?: str
     console.log(`[VixSrc] Fetching embed via API: ${apiUrl}`);
 
     try {
-        const { body, statusCode } = await request(apiUrl, {
-            headers: {
-                ...VIXSRC_HEADERS,
-                'Accept': 'application/json, text/plain, */*',
-                'Referer': `${siteOrigin}/`
-            }
-        });
+        const { body, statusCode, headers } = await request(apiUrl, {
+    headers: {
+        ...VIXSRC_HEADERS,
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': `${siteOrigin}/`,
+        'Origin': siteOrigin,
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty'
+    }
+});
 
-        if (statusCode !== 200) {
-            console.log(`[VixSrc] API responded with status ${statusCode}`);
-            return null;
+if (statusCode !== 200) {
+    console.log(`[VixSrc] API responded with status ${statusCode}`);
+    console.log("[VixSrc] Response headers:", headers);
+    console.log("[VixSrc] Body:", await body.text());
+    return null;
+}
         }
 
         const data: any = await body.json();
