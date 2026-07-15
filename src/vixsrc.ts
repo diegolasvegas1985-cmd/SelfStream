@@ -37,7 +37,7 @@ if (statusCode !== 200) {
     console.log("[VixSrc] Body:", await body.text());
     return null;
 }
-        }
+        
 
         const data: any = await body.json();
         const embedPath = data?.src;
