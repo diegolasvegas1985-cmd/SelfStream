@@ -1,8 +1,5 @@
-import * as cheerio from 'cheerio';
 import { request } from 'undici';
 import { config } from './config';
-import { makeProxyToken, VIXSRC_HEADERS } from './proxy';
-
 
 export async function getVixSrcStreams(
     id: string,
@@ -11,152 +8,80 @@ export async function getVixSrcStreams(
     preferredLang?: string
 ): Promise<any[]> {
 
-    const lang = preferredLang || "it";
-
-    let url = "";
-
-    if (season && episode) {
-        url = `https://${config.vixsrcDomain}/tv/${id}/${season}/${episode}?lang=${lang}`;
-    } else {
-        url = `https://${config.vixsrcDomain}/movie/${id}?lang=${lang}`;
-    }
-
-    console.log("[VixSrc] Fetch:", url);
-
-
     try {
 
-        const response = await request(url, {
+        const lang = preferredLang || "it";
+
+        let apiUrl = "";
+
+        if (season && episode) {
+            apiUrl =
+            `https://${config.vixsrcDomain}/api/tv/${id}/${season}/${episode}`;
+        } else {
+            apiUrl =
+            `https://${config.vixsrcDomain}/api/movie/${id}`;
+        }
+
+
+        console.log("[VixSrc API TEST]:", apiUrl);
+
+
+        const { body, statusCode } = await request(apiUrl, {
+
             headers: {
-                ...VIXSRC_HEADERS,
 
                 "User-Agent":
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
 
                 "Accept":
-                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-
-                "Accept-Language":
-                "it-IT,it;q=0.9,en;q=0.8",
+                "application/json,text/plain,*/*",
 
                 "Referer":
                 "https://vixsrc.to/",
 
                 "Origin":
                 "https://vixsrc.to"
-            }
-        });
 
-
-        console.log("[VixSrc] Status:", response.statusCode);
-
-
-        const html = await response.body.text();
-
-
-        if (response.statusCode !== 200) {
-
-            console.log(
-                "[VixSrc] Block response:",
-                html.substring(0,500)
-            );
-
-            return [];
-        }
-
-
-
-        const $ = cheerio.load(html);
-
-
-        let scriptContent = "";
-
-
-        $("script").each((_, el)=>{
-
-            const text = $(el).html() || "";
-
-            if (
-                text.includes("masterPlaylist") ||
-                text.includes(".m3u8") ||
-                (
-                    text.includes("token") &&
-                    text.includes("expires")
-                )
-            ) {
-                scriptContent = text;
             }
 
         });
 
 
-
-        if (!scriptContent) {
-
-            console.log(
-                "[VixSrc] Player script not found"
-            );
-
-            return [];
-        }
+        const text = await body.text();
 
 
-
-        const match =
-        scriptContent.match(
-            /https?:\/\/[^"'\\]+\.m3u8[^"'\\]*/
-        );
-
-
-        if (!match) {
-
-            console.log(
-                "[VixSrc] m3u8 not found"
-            );
-
-            return [];
-        }
-
-
-
-        const streamUrl =
-        match[0].replace(/\\/g,"");
-
-
+        console.log("[VixSrc STATUS]:", statusCode);
 
         console.log(
-            "[VixSrc] Stream URL:",
-            streamUrl
+            "[VixSrc RESPONSE]:",
+            text.substring(0,500)
         );
 
 
-
-        const token =
-        makeProxyToken(
-            streamUrl,
-            VIXSRC_HEADERS
-        );
+        if (statusCode !== 200) {
+            return [];
+        }
 
 
+        // per ora restituisce il risultato grezzo di controllo
 
         return [
             {
-                name: "VixSrc 🇮🇹",
-                title: "VixSrc Stream",
-                url:
-                `/proxy/hls/manifest.m3u8?token=${token}`
+                name: "VixSrc API TEST",
+                title: "API OK",
+                url: `https://${config.vixsrcDomain}/movie/${id}?lang=${lang}`
             }
         ];
 
 
-
-    } catch(error) {
+    } catch(err) {
 
         console.error(
-            "[VixSrc] Error:",
-            error
+            "[VixSrc ERROR]",
+            err
         );
 
         return [];
+
     }
 }
