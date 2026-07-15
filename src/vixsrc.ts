@@ -19,11 +19,11 @@ export async function getVixSrcStreams(
 
     console.log("[VixSrc] Direct player:", url);
 
-    return [
-        {
-            name: "VixSrc 🇮🇹",
-            title: "VixSrc Player",
-            url
-        }
-    ];
-}
+
+return [
+ {
+  name:"VixSrc 🇮🇹",
+  title:"Apri VixSrc",
+  externalUrl: url
+ }
+];
