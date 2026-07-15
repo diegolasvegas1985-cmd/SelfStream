@@ -3,25 +3,26 @@ import { request } from 'undici';
 import { config } from './config';
 import { makeProxyToken, VIXSRC_HEADERS } from './proxy';
 
+
 /**
- * Resolve the current embed URL through VixSrc page.
+ * Build VixSrc embed URL.
+ * Uses original Stremio ID (IMDb ttxxxx or TMDB id).
  */
 async function getEmbedUrlFromApi(
-    tmdbId: string,
+    id: string,
     season?: string,
     episode?: string
 ): Promise<string | null> {
 
     const siteOrigin = `https://${config.vixsrcDomain}`;
-    let embedPath = "";
+
+    let embedUrl = '';
 
     if (season && episode) {
-        embedPath = `/tv/${tmdbId}/${season}/${episode}`;
+        embedUrl = `${siteOrigin}/tv/${id}/${season}/${episode}`;
     } else {
-        embedPath = `/movie/${tmdbId}`;
+        embedUrl = `${siteOrigin}/movie/${id}`;
     }
-
-    const embedUrl = `${siteOrigin}${embedPath}`;
 
     console.log(`[VixSrc] Fetching embed page: ${embedUrl}`);
 
@@ -30,32 +31,34 @@ async function getEmbedUrlFromApi(
 
 
 export async function getVixSrcStreams(
-    tmdbId: string,
+    id: string,
     season?: string,
     episode?: string,
     preferredLang?: string
-): Promise<{name: string, title: string, url: string}[]> {
+): Promise<{name:string, title:string, url:string}[]> {
 
     try {
 
         const siteOrigin = `https://${config.vixsrcDomain}`;
 
-        // 1. Resolve embed URL
+
         const embedUrl = await getEmbedUrlFromApi(
-            tmdbId,
+            id,
             season,
             episode
         );
 
+
         if (!embedUrl) {
-            console.log("[VixSrc] Failed to resolve embed URL");
+            console.log("[VixSrc] No embed URL");
             return [];
         }
 
-        console.log("[VixSrc] Embed URL:", embedUrl);
+
+        console.log(`[VixSrc] Embed URL: ${embedUrl}`);
 
 
-        // 2. Fetch embed page
+
         const { body, statusCode } = await request(embedUrl, {
             headers: {
                 ...VIXSRC_HEADERS,
@@ -72,11 +75,11 @@ export async function getVixSrcStreams(
 
 
         const html = await body.text();
+
         const $ = cheerio.load(html);
 
 
-        // Find player script
-        const scriptTag = $("script").filter((_, el) => {
+        const scriptTag = $("script").filter((_, el)=>{
 
             const content = $(el).html() || '';
 
@@ -91,6 +94,7 @@ export async function getVixSrcStreams(
         }).first();
 
 
+
         const scriptContent = scriptTag.html() || "";
 
 
@@ -99,91 +103,123 @@ export async function getVixSrcStreams(
         }
 
 
+
         let token = "";
         let expires = "";
         let asn = "";
         let serverUrl = "";
 
 
+
         const tokenMatch =
-            scriptContent.match(/['"]token['"]\s*:\s*['"]([^'"]+)['"]/);
+        scriptContent.match(/['"]token['"]\s*:\s*['"]([^'"]+)['"]/);
+
 
         const expiresMatch =
-            scriptContent.match(/['"]expires['"]\s*:\s*['"](\d+)['"]/);
+        scriptContent.match(/['"]expires['"]\s*:\s*['"](\d+)['"]/);
+
 
         const asnMatch =
-            scriptContent.match(/['"]asn['"]\s*:\s*['"]([^'"]*)['"]/);
+        scriptContent.match(/['"]asn['"]\s*:\s*['"]([^'"]*)['"]/);
+
 
         const urlMatch =
-            scriptContent.match(/url\s*:\s*['"]([^'"]+)['"]/);
+        scriptContent.match(/url\s*:\s*['"]([^'"]+)['"]/);
 
 
-        if (tokenMatch)
-            token = tokenMatch[1];
 
-        if (expiresMatch)
-            expires = expiresMatch[1];
+        if(tokenMatch) token = tokenMatch[1];
 
-        if (asnMatch)
-            asn = asnMatch[1];
+        if(expiresMatch) expires = expiresMatch[1];
 
-        if (urlMatch)
-            serverUrl = urlMatch[1].replace(/\\/g, '');
-                if (!token || !expires || !serverUrl) {
+        if(asnMatch) asn = asnMatch[1];
+
+        if(urlMatch) serverUrl = urlMatch[1].replace(/\\/g,'');
+
+
+        if(!token || !expires || !serverUrl){
             throw new Error(
-                "Failed to extract mandatory parameters from VixSrc script."
+                "Missing VixSrc parameters"
             );
         }
-
-
-        // 3. Build final stream URL
-
-        const canPlayFHD =
+                const canPlayFHD =
             /window\.canPlayFHD\s*=\s*true/i.test(scriptContent) ||
             /canPlayFHD/.test(scriptContent);
 
 
+
         const urlObj = new URL(serverUrl);
 
-        const lang = preferredLang || 'en';
 
-        urlObj.searchParams.set('token', token);
-        urlObj.searchParams.set('expires', expires);
-        urlObj.searchParams.set('lang', lang);
+        urlObj.searchParams.set(
+            'token',
+            token
+        );
 
 
-        if (asn) {
-            urlObj.searchParams.set('asn', asn);
+        urlObj.searchParams.set(
+            'expires',
+            expires
+        );
+
+
+        urlObj.searchParams.set(
+            'lang',
+            preferredLang || 'it'
+        );
+
+
+        if(asn){
+            urlObj.searchParams.set(
+                'asn',
+                asn
+            );
         }
 
 
-        if (canPlayFHD) {
-            urlObj.searchParams.set('h', '1');
+        if(canPlayFHD){
+            urlObj.searchParams.set(
+                'h',
+                '1'
+            );
         }
+
 
 
         let finalStreamUrl = urlObj.toString();
 
 
 
-        // 4. Fix playlist extension if needed
+        // Fix playlist.m3u8
 
         const parts = urlObj.pathname.split('/');
 
         const pIdx = parts.indexOf('playlist');
 
 
-        if (pIdx !== -1 && pIdx < parts.length - 1) {
+        if(
+            pIdx !== -1 &&
+            pIdx < parts.length - 1
+        ){
 
             const nextPart = parts[pIdx + 1];
 
-            if (nextPart && !nextPart.includes('.')) {
 
-                parts[pIdx + 1] = nextPart + '.m3u8';
+            if(
+                nextPart &&
+                !nextPart.includes('.')
+            ){
 
-                urlObj.pathname = parts.join('/');
+                parts[pIdx + 1] =
+                    nextPart + '.m3u8';
 
-                finalStreamUrl = urlObj.toString();
+
+                urlObj.pathname =
+                    parts.join('/');
+
+
+                finalStreamUrl =
+                    urlObj.toString();
             }
         }
 
@@ -195,30 +231,29 @@ export async function getVixSrcStreams(
 
 
 
-        // 5. HLS proxy
-
-        const proxyToken = makeProxyToken(
-            finalStreamUrl,
-            VIXSRC_HEADERS
-        );
+        const proxyToken =
+            makeProxyToken(
+                finalStreamUrl,
+                VIXSRC_HEADERS
+            );
 
 
 
         return [
             {
-                name: "SC 🤌",
-                title: "VIX 1080 🤌",
+                name: "VIX 🇮🇹",
+                title: "VixSrc 1080",
                 url:
-                    `/proxy/hls/manifest.m3u8?token=${proxyToken}`
+                `/proxy/hls/manifest.m3u8?token=${proxyToken}`
             }
         ];
 
 
 
-    } catch (err) {
+    } catch(err){
 
         console.error(
-            "VixSrc Stream extraction error",
+            "[VixSrc] Stream extraction error",
             err
         );
 
