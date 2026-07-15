@@ -19,8 +19,7 @@ async function getEmbedUrlFromApi(tmdbId: string, season?: string, episode?: str
     const apiUrl = `${siteOrigin}${apiPath}`;
     console.log(`[VixSrc] Fetching embed via API: ${apiUrl}`);
 
-    try {
-        const { body, statusCode, headers } = await request(apiUrl, {
+    try {const { body, statusCode, headers } = await request(apiUrl, {
     headers: {
         ...VIXSRC_HEADERS,
         'Accept': 'application/json, text/plain, */*',
