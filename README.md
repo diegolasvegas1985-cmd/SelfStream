@@ -1,4 +1,4 @@
-# SelfStream 🤌
+# Diego ⚡⚡🥳
 
 A lightweight, self-hosted Stremio addon with **2 configurable sources**, built-in HLS proxy, multi-language support (40 languages), and automatic subtitle injection.
 
